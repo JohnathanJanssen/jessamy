@@ -1,0 +1,12 @@
+# Ignore virtual environment
+jessamy-tts-env/
+
+# Ignore compiled libraries and large files
+*.dylib
+*.dic
+*.db
+*.stl
+
+# VSCode files
+.vscode/
+
