@@ -1,0 +1,71 @@
+name: Run Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  # push: # Trigger the workflow on push events
+
+concurrency:
+  group: "test"
+  cancel-in-progress: false
+
+jobs:
+  pytest:
+    name: Run Test
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # os: [macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11"]
+
+    defaults:
+      run:
+        working-directory: software
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: |
+          # Ensure dependencies are installed without relying on a lock file.
+          poetry update
+          poetry install
+
+      # Install ffmpeg on Ubuntu
+      - name: Installing ffmpeg in Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install ffmpeg
+
+      # Install ffmpeg on macOS using Homebrew
+      - name: Installing ffmpeg in Mac
+        if: matrix.os == 'macos-latest'
+        run: brew install ffmpeg
+
+      # Install choco and then ffmpeg on Windows
+      - name: Installing choco and ffmpeg in Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          choco install ffmpeg
+
+      # Run pytest
+      - name: Run Pytest
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: poetry run pytest
