@@ -10,3 +10,4 @@ jessamy-tts-env/
 # VSCode files
 .vscode/
 
+.env

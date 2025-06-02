@@ -1,47 +1,12 @@
-# app.py
-
 from flask import Flask, render_template, request, jsonify
-import subprocess
-import threading
-import openai
+from TTS.api import TTS
 import os
-from dotenv import load_dotenv
 
-# Local TTS
-from jessamy_tts import speak
+# Initialize Flask app
+app = Flask(__name__, static_folder='static', template_folder='templates')
 
-# === CONFIGURATION ===
-load_dotenv()  # Load variables from .env file
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
-
-app = Flask(__name__)
-
-# === FUNCTIONS ===
-
-def ask_gpt(message):
-    """
-    Sends a message to ChatGPT and returns the reply.
-    """
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are Jessamy, a friendly and highly capable AI assistant created to help Johnathan with tasks on his MacBook."},
-            {"role": "user", "content": message}
-        ],
-        temperature=0.6,
-        max_tokens=500
-    )
-    reply = response['choices'][0]['message']['content'].strip()
-    return reply
-
-def speak_async(text):
-    """
-    Run Jessamy's TTS speaking in a background thread so the server remains responsive.
-    """
-    threading.Thread(target=speak, args=(text,)).start()
-
-# === ROUTES ===
+# Load the TTS model
+tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", vocoder_path=None, progress_bar=False, gpu=False)
 
 @app.route('/')
 def index():
@@ -50,20 +15,19 @@ def index():
 @app.route('/get_response', methods=['POST'])
 def get_response():
     data = request.get_json()
-    message = data.get('message', '')
+    user_input = data.get('user_input', '').strip()
 
-    if not message:
-        return jsonify({'reply': "I'm sorry, I didn't catch that."})
+    if not user_input:
+        return jsonify({'response': 'Please enter a message.'})
 
-    # Get GPT reply
-    reply = ask_gpt(message)
+    # Basic logic for response (you can enhance this)
+    response_text = f"Jessamy heard: {user_input}"
 
-    # Speak reply (locally using Jessamy voice)
-    speak_async(reply)
+    # Generate speech audio file
+    audio_path = os.path.join("static", "response.wav")
+    tts.tts_to_file(text=response_text, file_path=audio_path)
 
-    return jsonify({'reply': reply})
-
-# === RUN APP ===
+    return jsonify({'response': response_text, 'audio': '/' + audio_path})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
