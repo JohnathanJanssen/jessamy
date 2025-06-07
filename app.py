@@ -1,12 +1,8 @@
-from flask import Flask, render_template, request, jsonify
-from TTS.api import TTS
+from flask import Flask, render_template, request, jsonify, send_file
 import os
+from tts import generate_speech  # Make sure this file exists and works
 
-# Initialize Flask app
-app = Flask(__name__, static_folder='static', template_folder='templates')
-
-# Load the TTS model
-tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", vocoder_path=None, progress_bar=False, gpu=False)
+app = Flask(__name__, static_folder='static')
 
 @app.route('/')
 def index():
@@ -15,19 +11,24 @@ def index():
 @app.route('/get_response', methods=['POST'])
 def get_response():
     data = request.get_json()
-    user_input = data.get('user_input', '').strip()
+    user_input = data.get('user_input', '')
+    voice_mode = data.get('voice_mode', False)
 
     if not user_input:
-        return jsonify({'response': 'Please enter a message.'})
+        return jsonify({'reply': 'Please enter a message.'})
 
-    # Basic logic for response (you can enhance this)
-    response_text = f"Jessamy heard: {user_input}"
+    # Placeholder logic for Jessamy’s response
+    reply_text = f"Jessamy heard: {user_input}"
 
-    # Generate speech audio file
-    audio_path = os.path.join("static", "response.wav")
-    tts.tts_to_file(text=response_text, file_path=audio_path)
+    if voice_mode:
+        generate_speech(reply_text)  # writes to static/output.wav
+        return jsonify({'reply': reply_text, 'audio_url': '/static/output.wav'})
+    else:
+        return jsonify({'reply': reply_text})
 
-    return jsonify({'response': response_text, 'audio': '/' + audio_path})
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_file(os.path.join(app.static_folder, filename))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
